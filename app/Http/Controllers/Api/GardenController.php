@@ -5,91 +5,92 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Garden;
 use App\Models\Membership;
+use App\Http\Requests\StoreGardenRequest;
+use App\Http\Requests\UpdateGardenRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class GardenController extends Controller
 {
-    // Menampilkan semua kebun milik user yang sedang login
-    public function index()
+    /**
+     * Menampilkan daftar semua kebun untuk publik (fitur "Cari Kebun").
+     */
+    public function publicIndex()
     {
-        $user = Auth::user();
-        $gardens = Garden::where('pemilik_id', $user->id)->get();
+        $gardens = Garden::select('id', 'nama_kebun', 'alamat')->latest()->get();
         return response()->json($gardens);
     }
 
-    // Membuat kebun baru
-    public function store(Request $request)
+    /**
+     * Menampilkan daftar kebun di mana user yang login adalah pengelola.
+     */
+    public function index()
     {
-        $validator = Validator::make($request->all(), [
-            'nama_kebun' => 'required|string|max:255',
-            'alamat' => 'nullable|string',
-        ]);
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $managedGardenIds = $user->memberships()->where('role', 'pengelola')->pluck('garden_id');
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
+        $gardens = Garden::whereIn('id', $managedGardenIds)->get();
+        return response()->json($gardens);
+    }
 
+    /**
+     * Menyimpan kebun baru dan menjadikan pembuatnya sebagai pengelola.
+     */
+    public function store(StoreGardenRequest $request)
+    {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        // Buat kebun baru
-        $garden = Garden::create([
-            'nama_kebun' => $request->nama_kebun,
-            'alamat' => $request->alamat,
-            'pemilik_id' => $user->id,
-        ]);
+        $garden = DB::transaction(function () use ($request, $user) {
+            $garden = Garden::create(array_merge($request->validated(), [
+                'pemilik_id' => $user->id,
+            ]));
 
-        // Secara otomatis, jadikan si pembuat sebagai pengelola kebun tersebut
-        Membership::create([
-            'user_id' => $user->id,
-            'garden_id' => $garden->id,
-            'role' => 'pengelola'
-        ]);
+            Membership::create([
+                'user_id' => $user->id,
+                'garden_id' => $garden->id,
+                'role' => 'pengelola',
+            ]);
 
-        return response()->json($garden, 201);
+            return $garden;
+        });
+
+        return response()->json($garden->load('owner'), 201);
     }
 
-    public function publicIndex()
-{
-    // Menampilkan daftar semua kebun untuk dipilih
-    $gardens = Garden::select('id', 'nama_kebun', 'alamat')->get();
-    return response()->json($gardens);
-}
-public function show(Garden $garden)
+    /**
+     * Menampilkan detail satu kebun.
+     */
+    public function show(Garden $garden)
     {
-        return response()->json($garden);
-    }
-
-    // FUNGSI BARU: Mengupdate kebun
-    public function update(Request $request, Garden $garden)
-    {
-        // Otorisasi: Hanya pengelola kebun ini yang boleh mengupdate
-        if (! Gate::allows('manage-garden', $garden)) {
-            abort(403, 'Anda tidak punya hak akses untuk mengelola kebun ini.');
+        if (! Gate::allows('view-garden', $garden)) {
+            abort(403, 'Anda bukan anggota dari kebun ini.');
         }
+        return response()->json($garden->load(['owner', 'plots', 'memberships.user']));
+    }
 
-        $validated = $request->validate([
-            'nama_kebun' => 'sometimes|required|string|max:255',
-            'alamat' => 'nullable|string',
-        ]);
-
-        $garden->update($validated);
-
+    /**
+     * Mengupdate detail kebun.
+     */
+    public function update(UpdateGardenRequest $request, Garden $garden)
+    {
+        $garden->update($request->validated());
         return response()->json($garden);
     }
 
-    // FUNGSI BARU: Menghapus kebun
+    /**
+     * Menghapus sebuah kebun.
+     */
     public function destroy(Garden $garden)
     {
-        // Otorisasi: Hanya pengelola kebun ini yang boleh menghapus
         if (! Gate::allows('manage-garden', $garden)) {
-            abort(403, 'Anda tidak punya hak akses untuk mengelola kebun ini.');
+            abort(403, 'Hanya pengelola yang bisa menghapus kebun ini.');
         }
 
         $garden->delete();
-
         return response()->json(['message' => 'Kebun berhasil dihapus.']);
     }
 }

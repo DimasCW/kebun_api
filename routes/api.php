@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\JoinRequestController;
+use App\Http\Controllers\Api\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,17 +29,21 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/users/search', [UserController::class, 'search']);
 
     // CRUD Utama
     Route::apiResource('/gardens', GardenController::class);
     Route::apiResource('/plots', PlotController::class);
-    Route::apiResource('/journals', JournalController::class);
     Route::apiResource('/memberships', MembershipController::class)->only(['store', 'destroy']);
+    
+    // Rute Jurnal yang Sudah Diperbaiki
+    Route::get('/gardens/{gardenId}/journals', [JournalController::class, 'index']);
+    Route::apiResource('/journals', JournalController::class)->only(['store', 'show', 'update', 'destroy']);
     
     // Pengumuman & Jadwal
     Route::apiResource('/announcements', AnnouncementController::class);
     Route::apiResource('/schedules', ScheduleController::class)->except(['update']);
-    Route::patch('/schedules/{schedule}/status', [ScheduleController::class, 'updateStatus']); // Rute khusus untuk update status
+    Route::patch('/schedules/{schedule}/status', [ScheduleController::class, 'updateStatus']);
 
     // Permintaan Bergabung
     Route::post('/join-requests', [JoinRequestController::class, 'store']);

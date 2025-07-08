@@ -7,6 +7,7 @@ use App\Models\Journal;
 use App\Models\Membership;
 use App\Models\Schedule;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -25,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Solusi Gate yang lebih eksplisit
+        Gate::define('view-garden', function (User $user, Garden $garden) {
+            return $user->memberships()->where('garden_id', $garden->id)->exists();
+        });
         // Gate untuk mengecek apakah user adalah PENGELOLA di sebuah kebun
         Gate::define('manage-garden', function (User $user, Garden $garden) {
             return Membership::where('user_id', $user->id)

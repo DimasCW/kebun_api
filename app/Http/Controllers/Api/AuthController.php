@@ -39,7 +39,9 @@ class AuthController extends Controller
             return response()->json(['message' => 'Email atau password salah'], 401);
         }
 
-        $user = User::where('email', $request['email'])->firstOrFail();
+        $user = User::with(['memberships.garden:id,nama_kebun'])
+        ->where('email', $request['email'])
+        ->firstOrFail();        
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -56,8 +58,17 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logout berhasil']);
     }
 
+/**
+     * Get the authenticated User.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function user(Request $request)
     {
-        return response()->json($request->user());
+        // KODE YANG DIPERBAIKI ADA DI SINI:
+        // 'load' akan memaksa Laravel untuk menyertakan data dari relasi.
+        // Kita muat relasi 'memberships' dan di dalam setiap membership, muat juga detail 'garden'.
+        return $request->user()->load(['memberships.garden:id,nama_kebun']);
     }
 }

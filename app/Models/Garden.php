@@ -21,5 +21,26 @@ class Garden extends Model
         'denah_url', // Bahkan jika null, lebih baik didaftarkan
     ];
 
-    // ... sisa relasi ...
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'pemilik_id');
+    }
+    // =================================================================
+
+
+    // Relasi lain yang sudah ada (untuk kelengkapan)
+    public function memberships()
+    {
+        return $this->hasMany(Membership::class);
+    }
+
+    public function plots()
+    {
+        return $this->hasMany(Plot::class);
+    }
+
+    public function journals()
+    {
+        return $this->hasMany(Journal::class);
+    }
 }
