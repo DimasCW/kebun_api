@@ -15,6 +15,17 @@ use Illuminate\Support\Facades\Auth; // <-- PERUBAHAN 1: TAMBAHKAN IMPORT INI
 class MembershipController extends Controller
 {
     // Menambahkan seorang anggota ke sebuah kebun (Hanya bisa dilakukan oleh pengelola)
+    public function index(Garden $garden)
+    {
+        // Otorisasi: Pastikan user yang meminta adalah anggota dari kebun ini
+        if (Gate::denies('view-garden', $garden)) {
+            abort(403, 'Anda bukan anggota dari kebun ini.');
+        }
+
+        $members = $garden->memberships()->with('user:id,nama,email')->get();
+
+        return response()->json($members);
+    }
     public function store(Request $request)
     {
         // 1. Validasi input: kita sekarang mengharapkan email

@@ -42,9 +42,15 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Pengumuman & Jadwal
     Route::apiResource('/announcements', AnnouncementController::class);
-    Route::apiResource('/schedules', ScheduleController::class)->except(['update']);
     Route::patch('/schedules/{schedule}/status', [ScheduleController::class, 'updateStatus']);
 
+    Route::get('/gardens/{garden}/schedules', [ScheduleController::class, 'index']);
+    Route::apiResource('/schedules', ScheduleController::class)->only(['store', 'show', 'destroy']);
+    // Rute untuk update status tetap sama
+    Route::patch('/schedules/{schedule}/status', [ScheduleController::class, 'updateStatus']);
+
+    Route::get('/gardens/{garden}/memberships', [MembershipController::class, 'index']);
+    Route::apiResource('/memberships', MembershipController::class)->only(['store', 'destroy']);
     // Permintaan Bergabung
     Route::post('/join-requests', [JoinRequestController::class, 'store']);
     Route::get('/join-requests', [JoinRequestController::class, 'index']);
